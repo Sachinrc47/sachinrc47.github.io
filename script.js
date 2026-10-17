@@ -2,6 +2,7 @@
   var root=document.documentElement;
   var EMAIL='sachinramachandran5@gmail.com';
   var LINKEDIN='https://www.linkedin.com/in/sachin-ramachandran-51233b163/';
+  var CV='Sachin-Ramachandran-CV.pdf';
   var mq=function(q){return window.matchMedia?window.matchMedia(q):{matches:false};};
   var REDUCED=mq('(prefers-reduced-motion: reduce)');
 
@@ -34,19 +35,19 @@
     if(!pref()){setDark(e.matches);}
   });
 
-  // ---- accordions
-  var past=document.querySelector('.past'),tog=past.querySelector('.tog');
-  tog.addEventListener('click',function(){
-    var open=past.getAttribute('data-open')!=='true';
-    past.setAttribute('data-open',String(open));
-    tog.setAttribute('aria-expanded',String(open));
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('.role-h'),function(btn){
-    btn.addEventListener('click',function(){
-      var role=btn.closest('.role'),open=role.getAttribute('data-open')!=='true';
-      role.setAttribute('data-open',String(open));
-      btn.setAttribute('aria-expanded',String(open));
-    });
+  // ---- role details fold open; a closed panel is inert so its links and text stay out of the tab order
+  function setRole(role,open){
+    var btn=role.querySelector('.role-h'),panel=role.querySelector('.rpanel');
+    role.setAttribute('data-open',String(open));
+    btn.setAttribute('aria-expanded',String(open));
+    if(panel){panel.inert=!open;}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.roles .role[data-open]'),function(role){
+    setRole(role,role.getAttribute('data-open')==='true');
+    var flip=function(){setRole(role,role.getAttribute('data-open')!=='true');};
+    role.querySelector('.role-h').addEventListener('click',flip);
+    // the headline under the header is part of the same target
+    var hl=role.querySelector('.hl');if(hl){hl.addEventListener('click',flip);}
   });
 
   // ---- toast + copy email
@@ -105,20 +106,24 @@
   var kbg=document.getElementById('kbg'),kin=document.getElementById('kin'),
       klist=document.getElementById('klist'),kempty=document.getElementById('kempty'),kbtn=document.getElementById('kbtn');
   function go(id){return function(){var el=document.getElementById(id);if(el){el.scrollIntoView({behavior:REDUCED.matches?'auto':'smooth'});}};}
+  function downloadCV(){var a=document.createElement('a');a.href=CV;a.download='Sachin-Ramachandran-CV.pdf';document.body.appendChild(a);a.click();a.remove();}
+  // k: extra words each result answers to, so "milaap", "resume" or "ga4" still find the right place
   var items=[
-    {label:'Work',group:'Jump to',run:go('work')},
-    {label:'Highlights',group:'Jump to',run:go('highlights')},
-    {label:'Skills',group:'Jump to',run:go('skills')},
-    {label:'Education',group:'Jump to',run:go('education')},
-    {label:'Email Sachin',group:'Contact',run:function(){location.href='mailto:'+EMAIL;}},
-    {label:'Copy email address',group:'Contact',run:copyEmail},
-    {label:'Open LinkedIn',group:'Contact',run:function(){window.open(LINKEDIN,'_blank','noopener');}},
-    {label:'Toggle theme',group:'Settings',run:function(){toggleTheme();}}
+    {label:'Download CV (PDF)',group:'Action',k:'resume cv pdf download',run:downloadCV},
+    {label:'Selected achievements',group:'Jump to',k:'highlights revenue mrr users subscribers product hunt',run:go('achievements')},
+    {label:'Professional experience',group:'Jump to',k:'work jobs roles voicenotes app store subscriptions buy me a coffee milaap dell',run:go('experience')},
+    {label:'Skills',group:'Jump to',k:'meta google tiktok reddit bing taboola apple search app store ads ga4 firebase figma notion influencer',run:go('skills')},
+    {label:'Education',group:'Jump to',k:'college degree farook computer science',run:go('education')},
+    {label:'Email Sachin',group:'Contact',k:'mail hire contact',run:function(){location.href='mailto:'+EMAIL;}},
+    {label:'Copy email address',group:'Contact',k:'mail clipboard',run:copyEmail},
+    {label:'Call +91 77366 41604',group:'Contact',k:'phone mobile number call',run:function(){location.href='tel:+917736641604';}},
+    {label:'Open LinkedIn',group:'Contact',k:'profile social',run:function(){window.open(LINKEDIN,'_blank','noopener');}},
+    {label:'Toggle theme',group:'Settings',k:'dark light mode',run:function(){toggleTheme();}}
   ];
   var shown=[],sel=0,lastFocus=null;
   function render(){
     var q=kin.value.trim().toLowerCase();
-    shown=items.filter(function(it){return !q||(it.label+' '+it.group).toLowerCase().indexOf(q)>-1;});
+    shown=items.filter(function(it){return !q||(it.label+' '+it.group+' '+it.k).toLowerCase().indexOf(q)>-1;});
     if(sel>=shown.length){sel=Math.max(0,shown.length-1);}
     klist.innerHTML='';
     shown.forEach(function(it,i){
@@ -141,17 +146,19 @@
   function openK(){
     if(!kbg.hidden){return;}
     lastFocus=document.activeElement;kin.value='';sel=0;render();
+    root.style.overflow='hidden'; // keep the page behind still while searching on touch screens
     kbg.hidden=false;requestAnimationFrame(function(){kbg.classList.add('open');});
     kin.focus();
   }
   function closeK(){
     if(kbg.hidden){return;}
-    kbg.classList.remove('open');
+    kbg.classList.remove('open');root.style.overflow='';
     setTimeout(function(){kbg.hidden=true;},150);
     if(lastFocus&&lastFocus.focus){lastFocus.focus();}
   }
   function pick(i){var it=shown[i];if(!it){return;}closeK();setTimeout(it.run,10);}
   kbtn.addEventListener('click',openK);
+  document.getElementById('kclose').addEventListener('click',closeK);
   kbg.addEventListener('mousedown',function(e){if(e.target===kbg){closeK();}});
   kin.addEventListener('input',function(){sel=0;render();});
   kin.addEventListener('keydown',function(e){
@@ -168,15 +175,16 @@
     if(!typing&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&e.key.toLowerCase()==='t'&&kbg.hidden){toggleTheme();}
   });
 
-  // show Ctrl+K instead of ⌘K off Apple platforms
-  if(!/Mac|iPhone|iPad|iPod/.test(navigator.platform||navigator.userAgent)){kbtn.querySelector('kbd').textContent='Ctrl K';}
+  // the shortcut hint says Ctrl K off Apple platforms
+  if(!/Mac|iPhone|iPad|iPod/.test(navigator.platform||navigator.userAgent)){kbtn.setAttribute('data-tip','Search (Ctrl K)');}
 
   // ---- local time in Kerala (IST) on the tooltip
-  var tz=document.querySelector('[data-tz]');
+  var tz=document.querySelector('[data-tz]'),lt=document.querySelector('[data-lt]');
   function tick(){
     try{
       var t=new Date().toLocaleTimeString('en-US',{timeZone:'Asia/Kolkata',hour:'numeric',minute:'2-digit'});
       tz.setAttribute('data-tip',t+' in Kerala, India');
+      if(lt){lt.textContent=' ('+t+' local time)';}
     }catch(e){}
   }
   if(tz){tick();setInterval(tick,30000);}
@@ -185,13 +193,6 @@
   var rot=document.querySelector('.rot');
   if(rot){
     var words=Array.prototype.slice.call(rot.querySelectorAll('.rot-w')),wi=0;
-    // sub-pixel widths + negative tracking: round up and leave a hair of room so the last letter never clips
-    var fit=function(){rot.style.width=Math.ceil(words[wi].getBoundingClientRect().width+2)+'px';};
-    fit();
-    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fit);}
-    // the web font can swap in after first paint and change every word's width
-    if(window.ResizeObserver){var ro=new ResizeObserver(fit);words.forEach(function(w){ro.observe(w);});}
-    window.addEventListener('resize',fit);
     if(!REDUCED.matches&&words.length>1){
       setInterval(function(){
         if(document.hidden){return;}
@@ -200,7 +201,7 @@
         nxt.classList.remove('out');
         // restart the incoming word from below
         nxt.style.transition='none';nxt.getBoundingClientRect();nxt.style.transition='';
-        nxt.classList.add('on');fit();
+        nxt.classList.add('on');
         setTimeout(function(){cur.classList.remove('out');},600);
       },2400);
     }
@@ -253,6 +254,16 @@
       var r=li.getBoundingClientRect();
       li.style.setProperty('--mx',(e.clientX-r.left)+'px');li.style.setProperty('--my',(e.clientY-r.top)+'px');
     });
+  });
+
+  // ---- time in each role, counted in whole months inclusive (LinkedIn style); "Present" roles keep counting
+  Array.prototype.forEach.call(document.querySelectorAll('.dur[data-from]'),function(el){
+    var f=el.getAttribute('data-from').split('-'),t=el.getAttribute('data-to'),now=new Date();
+    t=t?t.split('-'):[now.getFullYear(),now.getMonth()+1];
+    var m=(+t[0]-f[0])*12+(+t[1]-f[1])+1,y=Math.floor(m/12),r=m%12,out=[];
+    if(y){out.push(y+(y===1?' yr':' yrs'));}
+    if(r){out.push(r+(r===1?' mo':' mos'));}
+    el.textContent=out.join(' ');
   });
 
   // ---- footer year
